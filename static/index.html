@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ice Cream Revenue Predictor</title>
+    <style>
+        :root {
+            --bg: #fff7fb;
+            --card: #ffffff;
+            --text: #2b2233;
+            --muted: #6f6478;
+            --accent: #e0559a;
+            --accent-dark: #c2437f;
+            --warn-bg: #fff4d6;
+            --warn-text: #7a5a00;
+            --border: #f0dbe8;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #17121c;
+                --card: #211a29;
+                --text: #f3ecf7;
+                --muted: #a99bb5;
+                --accent: #f06aac;
+                --accent-dark: #d9569a;
+                --warn-bg: #3a2f12;
+                --warn-text: #ffd97a;
+                --border: #382d44;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 440px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            margin: 0 0 6px;
+            font-size: 1.5rem;
+        }
+
+        .subtitle {
+            margin: 0 0 22px;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 1.1rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--text);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 14px 0 18px;
+            accent-color: var(--accent);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            background: var(--accent);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: var(--accent-dark);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .result {
+            margin-top: 22px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .result .label {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .result .value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 4px 0;
+        }
+
+        .note {
+            margin-top: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            background: var(--warn-bg);
+            color: var(--warn-text);
+        }
+
+        .error {
+            margin-top: 14px;
+            color: #d23f3f;
+            font-size: 0.9rem;
+        }
+
+        .model-info {
+            margin: 20px 0 0;
+            color: var(--muted);
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .links {
+            margin: 8px 0 0;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+
+        .links a {
+            color: var(--accent);
+        }
+    </style>
+</head>
+
+<body>
+    <main class="card">
+        <h1>🍦 Ice Cream Revenue Predictor</h1>
+        <p class="subtitle">Enter a temperature and the model predicts ice cream revenue.</p>
+
+        <label for="temp">Temperature (°C)</label>
+        <input id="temp" type="number" step="0.1" min="-10" max="60" value="30">
+        <input id="slider" type="range" min="-10" max="60" step="1" value="30" aria-label="Temperature slider">
+
+        <button id="predict-btn" type="button">Predict revenue</button>
+
+        <div id="result" class="result hidden">
+            <div class="label">Predicted revenue</div>
+            <div class="value" id="revenue"></div>
+            <div class="note hidden" id="note"></div>
+        </div>
+        <div id="error" class="error hidden"></div>
+
+        <p class="model-info" id="model-info"></p>
+        <p class="links"><a href="/docs">API docs</a></p>
+    </main>
+
+    <script>
+        const tempInput = document.getElementById("temp");
+        const slider = document.getElementById("slider");
+        const button = document.getElementById("predict-btn");
+        const resultBox = document.getElementById("result");
+        const revenueEl = document.getElementById("revenue");
+        const noteEl = document.getElementById("note");
+        const errorEl = document.getElementById("error");
+        const modelInfoEl = document.getElementById("model-info");
+
+        // Keep the number box and the slider in sync
+        slider.addEventListener("input", () => { tempInput.value = slider.value; });
+        tempInput.addEventListener("input", () => { slider.value = tempInput.value; });
+
+        function showError(message) {
+            errorEl.textContent = message;
+            errorEl.classList.remove("hidden");
+            resultBox.classList.add("hidden");
+        }
+
+        async function predict() {
+            errorEl.classList.add("hidden");
+            const temperature = parseFloat(tempInput.value);
+            if (Number.isNaN(temperature)) {
+                showError("Please enter a valid temperature.");
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = "Predicting...";
+            try {
+                const response = await fetch("/predict", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ temperature: temperature }),
+                });
+                if (!response.ok) {
+                    showError("Temperature must be between -10 and 60 °C.");
+                    return;
+                }
+                const data = await response.json();
+                revenueEl.textContent = "₹" + data.predicted_revenue.toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                });
+                if (data.note) {
+                    noteEl.textContent = data.note;
+                    noteEl.classList.remove("hidden");
+                } else {
+                    noteEl.classList.add("hidden");
+                }
+                resultBox.classList.remove("hidden");
+            } catch (err) {
+                showError("Could not reach the server. Please try again.");
+            } finally {
+                button.disabled = false;
+                button.textContent = "Predict revenue";
+            }
+        }
+
+        async function loadModelInfo() {
+            try {
+                const response = await fetch("/model-info");
+                const info = await response.json();
+                modelInfoEl.textContent =
+                    "Linear regression: each +1 °C adds about ₹" + info.slope +
+                    " · trained on " + info.training_range_celsius[0] + "–" +
+                    info.training_range_celsius[1] + " °C";
+            } catch (err) {
+                modelInfoEl.textContent = "";
+            }
+        }
+
+        button.addEventListener("click", predict);
+        tempInput.addEventListener("keydown", (e) => { if (e.key === "Enter") predict(); });
+        loadModelInfo();
+    </script>
+</body>
+
+</html>
