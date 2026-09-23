@@ -1,4 +1,7 @@
 # 🍦 Ice Cream Revenue Predictor
+**Live demo:** https://icecream-revenue-prediction.onrender.com · **API docs:** https://icecream-revenue-prediction.onrender.com/docs
+
+_Hosted on Render's free tier, so the first request after a period of inactivity can take about a minute to wake up._
 
 A machine learning web app that predicts ice cream revenue from the day's temperature. It uses a scikit-learn linear regression model served through a FastAPI REST API, with a small web page on top.
 
